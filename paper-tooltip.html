@@ -9,9 +9,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../neon-animation/neon-animation-runner-behavior.html">
-<link rel="import" href="../neon-animation/animations/fade-in-animation.html">
-<link rel="import" href="../neon-animation/animations/fade-out-animation.html">
 <!--
 
 `<paper-tooltip>` is a label that appears on hover and focus when the user
@@ -61,21 +58,63 @@ Custom property | Description | Default
       font-size: 10px;
 
       background-color: var(--paper-tooltip-background, #616161);
-      opacity: var(--paper-tooltip-opacity, 0.9);
       color: var(--paper-tooltip-text-color, white);
-
       padding: 8px;
       border-radius: 2px;
-      z-index: 1002;
+      max-width: var(--paper-tooltip-max-width, 300px);
 
       @apply(--paper-tooltip);
     }
+
+    :host[_showing] {
+      opacity: 0.9;
+      transition: opacity 0.5s ease-in-out 0.25s;
+      z-index: 1002;
+    }
+
+    :host:not([_showing]) {
+      opacity: 0;
+      pointer-events:none;
+      position:absolute;
+    }
+
+    #arrow {
+      border: solid transparent;
+      height: 0;
+      width: 0;
+      position: absolute;
+      pointer-events: none;
+      border-width: 5px;
+    }
+
+    :host[position='left'] #arrow {
+      left: 100%;
+      border-left-color: var(--paper-tooltip-background, #616161);
+    }
+
+    :host[position='right'] #arrow {
+      right: 100%;
+      border-right-color: var(--paper-tooltip-background, #616161);
+    }
+
+    :host[position='bottom'] #arrow {
+      bottom: 100%;
+      border-bottom-color: var(--paper-tooltip-background, #616161);
+    }
+
+    :host[position='top'] #arrow {
+      top: 100%;
+      border-top-color: var(--paper-tooltip-background, #616161);
+    }
   </style>
+
   <template>
-    <div id="tooltip" hidden>
+    <div id="tooltip">
       <content></content>
+      <div id="arrow"></div>
     </div>
   </template>
+
   <script>
     Polymer({
       is: 'paper-tooltip',
@@ -85,11 +124,13 @@ Custom property | Description | Default
         tabindex: -1
       },
 
-      behaviors: [
-        Polymer.NeonAnimationRunnerBehavior
-      ],
-
       properties: {
+        /**
+         * The cardinal position of the tooltip relative to its element. Options are 
+         * 'top', 'left', 'right', 'bottom', and can be blank.
+         */
+        position: String,
+
         /**
          * The id of the element that the tooltip is anchored to. This element
          * must be a sibling of the tooltip.
@@ -99,40 +140,22 @@ Custom property | Description | Default
         },
 
         /**
-         * The spacing between the top of the tooltip and the element it is
+         * The spacing between the edge of the tooltip and the element it is
          * anchored to.
          */
-        marginTop: {
+        margin: {
           type: Number,
           value: 14
         },
 
-        animationConfig: {
-          type: Object,
-          value: function() {
-            return {
-              'entry': [{
-                name: 'fade-in-animation',
-                node: this,
-                timing: {delay: 500}
-              }],
-              'exit': [{
-                name: 'fade-out-animation',
-                node: this
-              }]
-            }
-          }
-        },
-
         _showing: {
           type: Boolean,
-          value: false
+          value: false,
+          reflectToAttribute: true
         }
       },
 
-      listeners: {
-        'neon-animation-finish': '_onAnimationFinish'
-      },
+      _targetRect: Object,
 
       /**
        * Returns the target element that this tooltip is anchored to. It is
@@ -174,35 +197,64 @@ Custom property | Description | Default
       },
 
       show: function() {
-        this.$.tooltip.hidden = false;
         this._setPosition();
-        this._showing = true;
 
-        this.playAnimation('entry');
+        this._showing = true;
       },
 
       hide: function() {
         this._showing = false;
-        this.playAnimation('exit');
       },
 
       _setPosition: function() {
-        if (!this._target)
+        if (!this._target) {
           return;
+        }
+
+        var targetRect = this._target.getBoundingClientRect();
+        if (this._targetRect.top === targetRect.top && 
+            this._targetRect.left === targetRect.left &&
+            this._targetRect.height === targetRect.height &&
+            this._targetRect.width === targetRect.width) {
+          return;
+        } 
+        this._targetRect = targetRect;
 
         var parentRect = this.offsetParent.getBoundingClientRect();
-        var targetRect = this._target.getBoundingClientRect();
         var thisRect = this.getBoundingClientRect();
+        var centerHorizontalOffset = (targetRect.width - thisRect.width)/2;
+        var centerVerticalOffset = (targetRect.height - thisRect.height)/2;
+        var leftSide = targetRect.left - parentRect.left;
+        var topSide = targetRect.top - parentRect.top;
 
-        var centerOffset = (targetRect.width - thisRect.width) / 2;
+        var arrowSideLength = 5*Math.sqrt(2);
 
-        this.style.left = targetRect.left - parentRect.left + centerOffset + 'px';
-        this.style.top = targetRect.top - parentRect.top + targetRect.height + this.marginTop + 'px';
-      },
-
-      _onAnimationFinish: function() {
-        if (!this._showing) {
-          this.$.tooltip.hidden = true;
+        switch (this.position) {
+          case 'top':
+            this.style.left = leftSide + centerHorizontalOffset + 'px';
+            this.style.width = thisRect.width + 'px';
+            this.style.top = topSide - thisRect.height - this.margin + 'px'; 
+            this.$.arrow.style.left = (thisRect.width - arrowSideLength)/2 + 'px';
+            break;
+          case 'left':
+            this.style.left = leftSide - thisRect.width - this.margin + 'px';
+            this.style.width = thisRect.width + 'px';
+            this.style.top = topSide + centerVerticalOffset + 'px';
+            this.$.arrow.style.top = (thisRect.height - arrowSideLength)/2 + 'px';
+            break;
+          case 'right':
+            this.style.left = leftSide + targetRect.width + this.margin + 'px';
+            this.style.width = thisRect.width + 'px';
+            this.style.top = topSide + centerVerticalOffset + 'px';
+            this.$.arrow.style.top = (thisRect.height - arrowSideLength)/2 + 'px';
+            break;
+          case 'bottom':
+          default:
+            this.style.left = leftSide + centerHorizontalOffset + 'px';
+            this.style.width = thisRect.width + 'px';
+            this.style.top = topSide + targetRect.height + this.margin + 'px';
+            this.$.arrow.style.left = (thisRect.width - arrowSideLength)/2 + 'px';
+            break;
         }
       },
     })
