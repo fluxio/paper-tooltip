@@ -1,9 +1,10 @@
 {
   "name": "paper-tooltip",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Material design tooltip popup for content",
   "authors": [
-    "The Polymer Authors"
+    "The Polymer Authors",
+    "fluxio"
   ],
   "keywords": [
     "web-components",
@@ -16,10 +17,10 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git://github.com/PolymerElements/paper-tooltip.git"
+    "url": "git://github.com/fluxio/paper-tooltip.git"
   },
   "license": "http://polymer.github.io/LICENSE.txt",
-  "homepage": "https://github.com/PolymerElements/paper-tooltip",
+  "homepage": "https://github.com/fluxio/paper-tooltip",
   "ignore": [],
   "dependencies": {
     "polymer": "Polymer/polymer#^1.0.0",
